@@ -19,18 +19,20 @@ app.get('/', (req: Request, res: Response) => {
     res.send({ message });
 })
 
-app.get("/snacks", (req: Request, res: Response) => {
+app.get("/snacks", async (req: Request, res: Response) => {
     const { snack } = req.query
 
     if (!snack) return res.status(400).send({ error: "Snack is required" })
 
-    const snacks = prisma.client.snack.findMany({
+    const snacks = await prisma.snack.findMany({
         where: {
             snack:{
                 equals: snack as string,
             },
         },
     })
+
+    res.send(snacks)
 })
 
 app.listen(port, () => {
