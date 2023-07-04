@@ -1,26 +1,31 @@
-import { Customer, Order, PrismaClient } from "@prisma/client";
-import { CustomerData } from "../interfaces/CustomerData";
-import { PaymentData } from "../interfaces/PaymentData";
-import { SnackData } from "../interfaces/SnackData";
+import { Customer, Order, PrismaClient } from "@prisma/client"
+
+import { CustomerData } from "../interfaces/CustomerData"
+import { PaymentData } from "../interfaces/PaymentData"
+import { SnackData } from "../interfaces/SnackData"
+import PaymentService from "./PaymentService"
 
 export default class CheckoutService {
-  private prisma: PrismaClient;
+  private prisma: PrismaClient
 
+  // new CheckoutService()
   constructor() {
-    this.prisma = new PrismaClient();
+    this.prisma = new PrismaClient()
   }
+
   async process(
     cart: SnackData[],
     customer: CustomerData,
     payment: PaymentData
   ) {
+    // in: [1,2,3,4]
     const snacks = await this.prisma.snack.findMany({
       where: {
         id: {
           in: cart.map((snack) => snack.id),
         },
       },
-    });
+    })
     // console.log(`snacks`, snacks)
 
     const snacksInCart = snacks.map<SnackData>((snack) => ({
@@ -30,15 +35,20 @@ export default class CheckoutService {
       subTotal:
         cart.find((item) => item.id === snack.id)?.quantity! *
         Number(snack.price),
-    }));
+    }))
     // console.log(`snacksInCart`, snacksInCart)
 
-    const customerCreated = await this.createCustomer(customer);
-    // console.log(`customerCreated`, customerCreated);
+    const customerCreated = await this.createCustomer(customer)
+    // console.log(`customerCreated`, customerCreated)
 
     const orderCreated = await this.createOrder(snacksInCart, customerCreated)
-    console.log(`orderCreated`, orderCreated);
+    // console.log(`orderCreated`, orderCreated)
 
+    const transaction = await new PaymentService().process(
+      orderCreated,
+      customerCreated,
+      payment
+    )
   }
 
   private async createCustomer(customer: CustomerData): Promise<Customer> {
@@ -46,14 +56,16 @@ export default class CheckoutService {
       where: { email: customer.email },
       update: customer,
       create: customer,
-    });
+    })
 
-    return customerCreated;
+    return customerCreated
   }
 
-  private async createOrder(snacksInCart: SnackData[], customer: Customer): Promise<Order> {
-    const total = 0;
-
+  private async createOrder(
+    snacksInCart: SnackData[],
+    customer: Customer
+  ): Promise<Order> {
+    const total = snacksInCart.reduce((acc, snack) => acc + snack.subTotal, 0)
     const orderCreated = await this.prisma.order.create({
       data: {
         total,
@@ -64,9 +76,6 @@ export default class CheckoutService {
           createMany: {
             data: snacksInCart.map((snack) => ({
               snackId: snack.id,
-              snack: {
-                connect: { id: snack.id },
-              },
               quantity: snack.quantity,
               subTotal: snack.subTotal,
             })),
@@ -74,7 +83,8 @@ export default class CheckoutService {
         },
       },
       include: {
-        customer: true, orderItems: { include: { snack: true } },
+        customer: true,
+        orderItems: { include: { snack: true } },
       },
     })
 
