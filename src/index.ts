@@ -1,9 +1,11 @@
 import { PrismaClient } from "@prisma/client"
 import dotenv from "dotenv"
 import express, { Express, Request, Response } from "express"
+
 import { CustomerData } from "./interfaces/CustomerData"
-import { SnackData } from "./interfaces/SnackData"
 import { PaymentData } from "./interfaces/PaymentData"
+import { SnackData } from "./interfaces/SnackData"
+
 import CheckoutService from "./services/CheckoutService"
 
 dotenv.config()
@@ -55,20 +57,23 @@ app.get("/orders/:id", async (req: Request, res: Response) => {
 })
 
 interface CheckoutRequest extends Request {
-    body: {
-        cart: SnackData[]
-        customer: CustomerData
-        payment: PaymentData
-    }
+  body: {
+    cart: SnackData[]
+    customer: CustomerData
+    payment: PaymentData
+  }
 }
 
-app.post('/checkout', async (req: CheckoutRequest, res: Response) => {
-    const { cart, customer, payment } = req.body
+app.post("/checkout", async (req: CheckoutRequest, res: Response) => {
+  const { cart, customer, payment } = req.body
 
-    const checkoutService = new CheckoutService()
-    checkoutService.process( cart, customer, payment )
+  const orderCreated = await new CheckoutService().process(
+    cart,
+    customer,
+    payment
+  )
 
-    res.send({ message: "Checkout completed" })
+  res.send(orderCreated)
 })
 
 app.listen(port, () => {
